@@ -169,7 +169,7 @@ def extract_field(text, field_name):
         return 'Not found'
 
 # Streamlit UI
-st.title("Resume Scorer with AWS Bedrock")
+st.title("NIWC-A Resume Scorer Mockup")
 st.write("Upload a PDF file to extract and grade its content based on the criteria.")
 
 # File uploader widget
