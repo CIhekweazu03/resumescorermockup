@@ -12,12 +12,12 @@ st.set_page_config(
 )
 
 # AWS S3 Configuration
-BUCKET_NAME = 'cihekwe-resumeanalyzer'
+BUCKET_NAME = 'resume-scorer-mockup-bucket'
 EXCEL_FILE_KEY = 'sample_excel.xlsx'
 
 # Function to download Excel file from S3
 def download_excel_from_s3(bucket_name, file_key):
-    s3_client = boto3.client('s3')
+    s3_client = boto3.client('s3', region_name='us-east-1')
     try:
         response = s3_client.get_object(Bucket=bucket_name, Key=file_key)
         file_content = response['Body'].read()
@@ -28,7 +28,7 @@ def download_excel_from_s3(bucket_name, file_key):
 
 # Function to upload Excel file to S3
 def upload_excel_to_s3(df, bucket_name, file_key):
-    s3_client = boto3.client('s3')
+    s3_client = boto3.client('s3', region_name='us-east-1')
     try:
         with BytesIO() as buffer:
             df.to_excel(buffer, index=False)
@@ -48,14 +48,13 @@ def extract_text_from_pdf(pdf_file):
 
 # Function to analyze text using AWS Bedrock LLM with structured prompt
 def analyze_text_with_bedrock(text):
-    client = boto3.client('bedrock-runtime')  # Initialize Bedrock runtime client
+    client = boto3.client('bedrock-runtime', region_name='us-east-1')
     
-    # Define the model ID and request payload
-    model_id = 'amazon.titan-text-premier-v1:0'  # Model ID for Bedrock
+    model_id = 'amazon.titan-text-premier-v1:0'
     
     # Define the prompt with structured sections
     grading_prompt = (
-        "Please evaluate the content based on the following grading criteria:\n\n"
+        "Human: Please evaluate the content based on the following grading criteria:\n\n"
         
         "GPA:\n"
         "  - 3.0 or greater = Above Average (5 points)\n"
@@ -104,6 +103,7 @@ def analyze_text_with_bedrock(text):
         
         "Content to evaluate:\n"
         f"{text}\n"
+        "Assistant:"
     )
 
 
@@ -112,13 +112,21 @@ def analyze_text_with_bedrock(text):
     payload = {
         'inputText': grading_prompt
     }
+    request_body = json.dumps({
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": 50000,
+        "temperature": 0.7,
+        "messages": [
+            {"role": "user", "content": grading_prompt}
+        ]
+    })
     
     # Invoke the Bedrock model
     response = client.invoke_model(
-        modelId=model_id,
+        modelId='anthropic.claude-3-5-sonnet-20240620-v1:0',
         contentType='application/json',
         accept='application/json',
-        body=json.dumps(payload)
+        body=request_body
     )
     
     # Read and decode the response
@@ -127,8 +135,10 @@ def analyze_text_with_bedrock(text):
 
 # Function to parse the model response based on sections
 def parse_model_response(response):
-    if 'results' in response and isinstance(response['results'], list) and len(response['results']) > 0:
-        output_text = response['results'][0].get('outputText', 'No output text found.')
+    # Check if 'content' is in the response
+    if 'content' in response and isinstance(response['content'], list):
+        # Get the text content from the first item in the list
+        output_text = response['content'][0].get('text', 'No output text found.')
         
         # Split the output text into different sections
         sections = {'Personal Information': '', 'Grading': '', 'Explanation': ''}
