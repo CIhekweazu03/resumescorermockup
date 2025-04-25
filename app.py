@@ -50,8 +50,6 @@ def extract_text_from_pdf(pdf_file):
 def analyze_text_with_bedrock(text):
     client = boto3.client('bedrock-runtime', region_name='us-east-1')
     
-    model_id = 'amazon.titan-text-premier-v1:0'
-    
     # Define the prompt with structured sections
     grading_prompt = (
         "Human: Please evaluate the content based on the following grading criteria:\n\n"
@@ -123,7 +121,7 @@ def analyze_text_with_bedrock(text):
     
     # Invoke the Bedrock model
     response = client.invoke_model(
-        modelId='anthropic.claude-3-5-sonnet-20240620-v1:0',
+        modelId='us.anthropic.claude-3-7-sonnet-20250219-v1:0',
         contentType='application/json',
         accept='application/json',
         body=request_body
